@@ -1,16 +1,21 @@
 /**
  * Created by haizhi.wu on 2017/10/13.
  */
-    
+
+var Slice = require('./Slice');
+
+// 数据类型
 var Type_Int8 = 1;
 var Type_UInt8 = 2;
 var Type_Short = 3;
 var Type_UShort = 4;
 var Type_Int32 = 5;
 var Type_UInt32 = 6;
-var Type_String = 7;//变长字符串，前四个字节表示长度
+var Type_String = 7; //变长字符串，前四个字节表示长度
 var Type_Int64 = 8;
 var Type_UInt64 = 9;
+var Type_Slice = 10; // 二进制数据类型
+
 
 /*
  * 构造方法
@@ -201,6 +206,29 @@ var StreamBuf = function( buf, offset )
     };
 
     /**
+     * 二进制数据
+     **/
+    this.slice = function(val,index)
+    {
+        if(val == undefined || val == null)
+        {
+            // decode
+            var len = _buf['readUInt32'+_endian+'E'](_offset);
+            _offset+=4;
+            var s = new Slice( _buf.slice(_offset,_offset+len), len );
+            _list.push(s);
+            _offset+=len;
+        }
+        else
+        {
+            // encode
+            _list.splice(index != undefined ? index : _list.length,0,{t:Type_Slice,d:val.data(),l:val.size()});
+            _offset += val.size() + 4;
+        }
+        return this;
+    };
+
+    /**
      * 解包成数据数组
      **/
     this.unpack = function()
@@ -258,18 +286,23 @@ var StreamBuf = function( buf, offset )
                     _buf['writeUInt32' + _endian + 'E'](_list[i].d2, offset + 4);
                     offset += _list[i].l;
                     break;
+                case Type_Slice:
+                    // 前4个字节表示二进制数据长度
+                    _buf['writeUInt32'+_endian+'E'](_list[i].l,offset);
+                    offset+=4;
+                    _list[i].d.copy(_buf,offset);
+                    offset+=_list[i].l;
+                    break;
             }
         }
         return _buf;
     };
 
-    /**
-     * 未读数据长度
-     **/
-    this.getAvailable = function()
+    // 转成slice类型
+    this.toSlice = function()
     {
-        if(!_buf)return _offset;
-        return _buf.length - _offset;
+        var s = new Slice( _buf, _offset);
+        return s;
     };
 }
 

@@ -1,7 +1,7 @@
 
 var StreamBuf = require('./StreamBuf');
 
-var Item_Data = function()
+var Item_Data = function( roleid, id )
 {
     // TableName
     this.tablename = function() { return m_tablename; }
@@ -83,12 +83,13 @@ var Item_Data = function()
         }
 
         // key fields
-        pack.int64( m_db_roleid );
-        pack.int64( m_db_id );
+        pack.uint64( m_db_roleid );
+        pack.uint64( m_db_id );
         // fields number
         pack.ushort( nfields, 0 );
 
-        return pack.pack();
+        pack.pack();
+        return pack.toSlice();
     }
 
     this.decode = function( value )
@@ -175,8 +176,8 @@ var Item_Data = function()
     this.set_db_create_time = function( value ) { m_db_create_time = value; m_dirty[5] = 1; }
 
     // Fields
-    var m_db_id = 0;
-    var m_db_roleid = 0;
+    var m_db_id = id;
+    var m_db_roleid = roleid;
     var m_db_baseid = 0;
     var m_db_count = 0;
     var m_db_place = 0;
