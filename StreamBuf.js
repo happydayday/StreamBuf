@@ -150,7 +150,7 @@ var StreamBuf = function( buf, offset )
         {
             var len = _buf['readUInt32'+_endian+'E'](_offset);
             _offset+=4;
-            _list.push(_buf.toString(_encoding, _offset, _offset+len));
+            _list.push(_buf.toString(_encoding, _offset, _offset+len-1));
             _offset+=len;
         }
         else
@@ -158,7 +158,7 @@ var StreamBuf = function( buf, offset )
             var len = 0;
             if(val)len = Buffer.byteLength(val, _encoding);
             _list.splice(index != undefined ? index : _list.length,0,{t:Type_String,d:val,l:len});
-            _offset += len + 4;
+            _offset += len + 4 +1;
         }
         return this;
     };
@@ -215,7 +215,7 @@ var StreamBuf = function( buf, offset )
             // decode
             var len = _buf['readUInt32'+_endian+'E'](_offset);
             _offset+=4;
-            var s = new Slice( _buf.slice(_offset,_offset+len), len );
+            var s = new Slice( _buf.slice(_offset,_offset+len), len - 1 );
             _list.push(s);
             _offset+=len;
         }
@@ -223,7 +223,7 @@ var StreamBuf = function( buf, offset )
         {
             // encode
             _list.splice(index != undefined ? index : _list.length,0,{t:Type_Slice,d:val.data(),l:val.size()});
-            _offset += val.size() + 4;
+            _offset += val.size() + 4 +1;
         }
         return this;
     };
@@ -241,6 +241,7 @@ var StreamBuf = function( buf, offset )
      **/
     this.pack = function(){
         _buf = new Buffer(_offset);
+        _buf.fill(0);
         var offset = 0;
         for (var i = 0; i < _list.length; i++) {
             switch(_list[i].t)
@@ -271,10 +272,12 @@ var StreamBuf = function( buf, offset )
                     break;
                 case Type_String:
                     //前4个字节表示字符串长度
-                    _buf['writeUInt32'+_endian+'E'](_list[i].l,offset);
+                    _buf['writeUInt32'+_endian+'E'](_list[i].l+1,offset);
                     offset+=4;
                     _buf.write(_list[i].d,offset,_list[i].l,_encoding);
                     offset+=_list[i].l;
+                    _buf.write('\0',offset,1,_encoding);
+                    offset+=1;
                     break;
                 case Type_Int64:
                     _buf['writeInt32' + _endian + 'E'](_list[i].d1, offset);
@@ -288,10 +291,12 @@ var StreamBuf = function( buf, offset )
                     break;
                 case Type_Slice:
                     // 前4个字节表示二进制数据长度
-                    _buf['writeUInt32'+_endian+'E'](_list[i].l,offset);
+                    _buf['writeUInt32'+_endian+'E'](_list[i].l+1,offset);
                     offset+=4;
                     _list[i].d.copy(_buf,offset);
                     offset+=_list[i].l;
+                    _buf.write('\0',offset,1,_encoding);
+                    offset+=1;
                     break;
             }
         }
